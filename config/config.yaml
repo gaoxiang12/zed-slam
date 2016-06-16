@@ -1,0 +1,46 @@
+%YAML:1.0
+# Camera calibration and distortion parameters (OpenCV) 
+# Note: if run in zed live mode or svo mode, we use zed self-calibration parameters instead of the values listed below
+Camera_fx: 698.803
+Camera_fy: 698.803
+Camera_cx: 629.939
+Camera_cy: 346.939
+
+Camera_d0: 0.262383
+Camera_d1: -0.953104
+Camera_d2: -0.005358
+Camera_d3: 0.002628
+Camera_d4: 1.163314
+
+Camera_width: 1280
+Camera_height: 720
+
+# Camera frames per second 
+Camera_fps: 30.0
+
+# Deptmap values factor 
+DepthMapFactor: 1000.0
+
+# Feature Detection
+max_features: 200
+min_features: 100
+cell_size: 30
+scaleFactor: 1.2
+scaleLevels: 4
+# FAST分数阈值
+detection_threshold: 0.5
+# FAST检测阈值
+detection_barrier: 20
+
+# LK 光流
+klt_max_iter: 10 
+klt_eps: 0.01
+klt_window_size: 20
+
+# direct and semi-direct tracking
+# epison in GN
+epsilon_direct: 0.1
+confidence_threshold: 120
+
+# Local Mapping
+distance_keyframe: 0.1

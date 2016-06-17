@@ -58,7 +58,7 @@ int main ( int argc, char** argv )
         boost::timer timer_pose;
         tracker.poseEstimationTwoFrames ( frame1, frame2 );
 
-        if ( frame2->features_.size() <= zed_slam::Config::getInstance()->getValue<int> ( "min_features" ) )
+        if ( frame2->features_.size() <= zed_slam::Config::get<int> ( "min_features" ) )
         {
             // add new features into frame 2
             featureDetection.detectFAST ( frame2 );

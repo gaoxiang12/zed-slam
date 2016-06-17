@@ -2,12 +2,12 @@ cmake_minimum_required( VERSION 2.8 )
 project( zed_slam )
 
 if ( NOT CMAKE_BUILD_TYPE )
-    set(CMAKE_BUILD_TYPE "Release")
-    #set(CMAKE_BUILD_TYPE "Debug")
+    #set(CMAKE_BUILD_TYPE "Release")
+    set(CMAKE_BUILD_TYPE "Debug")
 endif()
 
 # set( CMAKE_CXX_COMPILER "clang++" )
-set( CMAKE_CXX_FLAGS "-Wall -O3 -pthread -Wno-sign-compare -Wno-reorder -Wno-switch -Wno-deprecated-register" )
+set( CMAKE_CXX_FLAGS "-Wall -pthread -Wno-sign-compare -Wno-reorder -Wno-switch -Wno-deprecated-register" )
 set( EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin )
 list( APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake_modules )
 

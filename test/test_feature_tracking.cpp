@@ -59,11 +59,13 @@ int main ( int argc, char** argv )
         cout<<"frame 2 pose = "<<endl<<frame2->T_f_w_.matrix()<<endl;
         cout<<"pose estimation cost time="<<timer_pose.elapsed() <<endl;
 
-        if ( frame2->features_.size() <= zed_slam::Config::getInstance()->getValue<int> ( "min_features" ) )
+        if ( frame2->features_.size() <= zed_slam::Config::get<int> ( "min_features" ) )
         {
             // add new features into frame 2
+            cout<<"add new features"<<endl;
             featureDetection.detectFAST ( frame2 );
         }
+        cout<<"draw features"<<endl;
         zed_slam::SLAMTools::drawFeatures ( frame2 );
         cv::waitKey ( 1 );
         frame1 = frame2;

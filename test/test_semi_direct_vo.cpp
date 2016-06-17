@@ -54,12 +54,12 @@ int main ( int argc, char** argv )
         
         featureDetection.detectFAST( frame1, true );
         // copy the features in frame1 into frame 2
-        std::for_each( frame1->features_.begin(), frame1->features_.end(), [&] (zed_slam::Feature* f) 
+        for ( auto f:frame1->features_ )
         {
-            zed_slam::Feature* f2 = new zed_slam::Feature( *f );
+            shared_ptr<zed_slam::Feature> f2 (new zed_slam::Feature( *f.second ));
             f2->frame_ = frame2.get();
-            frame2->features_.push_back(f2);
-        });
+            frame2->features_.insert({f.second->id_, f2});
+        }
         frame2->T_f_w_ = frame1->T_f_w_;
         
         // do semi direct pose estimation 

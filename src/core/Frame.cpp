@@ -21,10 +21,10 @@ Frame::Frame ( vk::PinholeCamera* camera, cv::Mat& img, cv::Mat& depth, cv::Mat&
     }
     else
         color_ = img;
-    
-    
+
+
     // color_ should be a CV_8UC1 grayscale image
-    assert( color_.type() == CV_8UC1 );
+    assert ( color_.type() == CV_8UC1 );
 
     // ZED gives CV_32F for depth and 8UC4 for normalized confidence
     assert ( depth.type() == CV_16UC1 || depth.type() == CV_32F );
@@ -39,10 +39,7 @@ Frame::Frame ( vk::PinholeCamera* camera, cv::Mat& img, cv::Mat& depth, cv::Mat&
 
 Frame::~Frame()
 {
-    std::for_each ( features_.begin(), features_.end(), [&] ( Feature* f )
-    {
-        delete f;
-    } );
+    features_.clear();
 }
 
 void Frame::init()
@@ -69,18 +66,16 @@ void Frame::createImagePyramid ( int scale_levels, float scale_factor )
 vector< cv::Point2f > Frame::getKeypointPixelPosition()
 {
     vector<cv::Point2f> pixels;
-    std::for_each ( features_.begin(), features_.end(), [&] ( Feature* f )
-    {
-        pixels.push_back ( f->keypoint_.pt );
-    }
-                  );
+    for ( auto f:features_ )
+        pixels.push_back ( f.second->keypoint_.pt );
     return pixels;
 }
 
 void Frame::assignFeatureDepthAndConfidence()
 {
-    std::for_each ( features_.begin(), features_.end(), [&] ( Feature* f )
+    for ( auto feature:features_ )
     {
+        auto f = feature.second;
         // it is a bit nasty to get a float from uchar arrays :D
         if ( f->quality_ > 0 )
             return;
@@ -91,7 +86,7 @@ void Frame::assignFeatureDepthAndConfidence()
                            Eigen::Vector3d (
                                f->keypoint_.pt.x, f->keypoint_.pt.y, f->depth_
                            ) );
-    } );
+    }
 }
 
 Eigen::Vector3d Frame::pixel2world ( const Eigen::Vector3d& pixel )
@@ -116,17 +111,12 @@ Eigen::Vector3d Frame::pixel2world ( const Eigen::Vector2d& pixel )
 
 void Frame::cleanFeatures()
 {
-
-    std::for_each ( features_.begin(), features_.end(), [&] ( Feature* f )
-    {
-        delete f;
-    });
     features_.clear();
 }
 
 bool Frame::inFrame ( const Eigen::Vector2d pixel, int boarder ) const
 {
-    return (pixel[0]-boarder) >= 0 && (pixel[0]+boarder)<color_.cols && (pixel[1]-boarder)>=0 && (pixel[1]+boarder)<color_.rows;
+    return ( pixel[0]-boarder ) >= 0 && ( pixel[0]+boarder ) <color_.cols && ( pixel[1]-boarder ) >=0 && ( pixel[1]+boarder ) <color_.rows;
 }
 
 float Frame::getBiLinearPixelValue ( const Eigen::Vector2d& pixel, BiLinearWeights& weights )
@@ -135,7 +125,7 @@ float Frame::getBiLinearPixelValue ( const Eigen::Vector2d& pixel, BiLinearWeigh
     float x = pixel[0], y = pixel[1];
     x_small = floor ( pixel[0] );
     y_small = floor ( pixel[1] );
-    
+
     x = x-x_small;
     y = y-y_small;
 
@@ -145,7 +135,7 @@ float Frame::getBiLinearPixelValue ( const Eigen::Vector2d& pixel, BiLinearWeigh
     weights.bottomRight_ = x*y;
 
     uchar* data_ptr = &color_.data[ y_small*color_.step + x_small ];
-    
+
     int step = color_.step;
     uchar f00 = data_ptr[0];
     uchar f10 = data_ptr[1];
@@ -153,18 +143,18 @@ float Frame::getBiLinearPixelValue ( const Eigen::Vector2d& pixel, BiLinearWeigh
     uchar f11 = data_ptr[step+1];
 
     return weights.topLeft_ * f00 + weights.topRight_ * f10
-                    + weights.bottomLeft_ * f01
-                    + weights.bottomRight_* f11;
+           + weights.bottomLeft_ * f01
+           + weights.bottomRight_* f11;
 }
 
 Eigen::Matrix< double, 2, 6 > Frame::getJacobianUV2SE3 ( const Eigen::Vector3d& point ) const
 {
-    Eigen::Vector3d point_local = this->world2camera( point );
+    Eigen::Vector3d point_local = this->world2camera ( point );
     double x = point_local[0], y=point_local[1], z=point_local[2];
     // don't ask me why z is in this form!
     Eigen::Matrix<double, 2, 6> jacob;
     float fx = camera_->fx(), fy = camera_->fy();
-    
+
     jacob ( 0,0 ) = fx / z;
     jacob ( 0,1 ) = 0;
     jacob ( 0,2 ) = - fx * x / ( z*z );
@@ -178,19 +168,19 @@ Eigen::Matrix< double, 2, 6 > Frame::getJacobianUV2SE3 ( const Eigen::Vector3d& 
     jacob ( 1,3 ) = -fy-fy*y*y/ ( z*z );
     jacob ( 1,4 ) = fy*x*y/ ( z*z );
     jacob ( 1,5 ) = fy*x/z;
-    
+
     return jacob;
 }
 
-Eigen::Matrix< double, 1, 2 > Frame::getJacobianPixel2UV ( const Eigen::Vector2d& pixel ) 
+Eigen::Matrix< double, 1, 2 > Frame::getJacobianPixel2UV ( const Eigen::Vector2d& pixel )
 {
     Eigen::Matrix<double, 1, 2> jacob;
-    BiLinearWeights weights; 
-    float p00 = getBiLinearPixelValue( pixel, weights );
-    float p10 = getBiLinearPixelValue( pixel+Eigen::Vector2d(2,0), weights );
-    float p01 = getBiLinearPixelValue( pixel+Eigen::Vector2d(0,2), weights );
-    jacob (0,0) = 0.5*(p10-p00);
-    jacob (0,1) = 0.5*(p01-p00);
+    BiLinearWeights weights;
+    float p00 = getBiLinearPixelValue ( pixel, weights );
+    float p10 = getBiLinearPixelValue ( pixel+Eigen::Vector2d ( 2,0 ), weights );
+    float p01 = getBiLinearPixelValue ( pixel+Eigen::Vector2d ( 0,2 ), weights );
+    jacob ( 0,0 ) = 0.5* ( p10-p00 );
+    jacob ( 0,1 ) = 0.5* ( p01-p00 );
     return jacob;
 }
 

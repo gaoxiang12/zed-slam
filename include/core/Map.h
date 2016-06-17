@@ -2,6 +2,7 @@
 #define ZED_SLAM_MAP_H_
 
 #include <list>
+#include <unordered_map>
 
 #include <opencv2/features2d/features2d.hpp>
 
@@ -20,14 +21,16 @@ public:
 
 class LocalMap 
 {
+    typedef unordered_map<int,shared_ptr<MapPoint>> MapPoints;
+    
 protected:
-    shared_ptr<cv::ORB>         orb_;   // for ORB descriptor
+    shared_ptr<cv::ORB>         orb_;           // for ORB descriptor
     list<shared_ptr<Frame>>     key_frames_;    // key frames in local map 
-    list<shared_ptr<MapPoint>>  map_points_;    // map points in local map 
+    MapPoints                   map_points_;    // map points in local map 
     
-    Frame::Ptr  ref_key_frame_;         // the referece key-frame, used to check new key-frames
-    
-    double distance_key_frame_;        // distance threshold for selecting key frames
+    Frame::Ptr  ref_key_frame_;                 // the referece key-frame, used to check new key-frames
+    double distance_key_frame_;                 // distance threshold for selecting key frames
+    cv::Mat current_descriptors_;               // the feature descriptor of the inserted key-frame
 public:
     
     LocalMap(); 
@@ -49,7 +52,10 @@ public:
     // set the map point into local map 
     void addMapPoints( Frame::Ptr frame );
     
-    list<shared_ptr<MapPoint>> getMapPoints() { return map_points_; }
+    // pose estimation
+    void poseOptimization( Frame::Ptr frame );
+    
+    MapPoints getMapPoints() { return map_points_; }
 public:
     
 };

@@ -49,8 +49,8 @@ FeatureDetection::FeatureDetection ( )
 
     detection_threshold_ = Config::get<double> ( "detection_threshold" );
     detection_barrier_ = Config::get<double> ( "detection_barrier" );
-    
-    max_features_ = Config::get<int>("max_features");
+
+    max_features_ = Config::get<int> ( "max_features" );
 
 }
 
@@ -66,14 +66,14 @@ void FeatureDetection::detectFAST ( Frame::Ptr frame, bool ignore_previous )
     {
         frame->cleanFeatures();
     }
-    // fill grid occupancy 
-    std::for_each( frame->features_.begin(), frame->features_.end(), [&](Feature* f){
-        const int k = static_cast<int> ( f->keypoint_.pt.y/cell_size_ ) *grid_n_cols_ +
-                          static_cast<int> ( f->keypoint_.pt.x /cell_size_ );
-        grid_occupancy_[k] = true; 
+    // fill grid occupancy
+    for ( auto f:frame->features_ )
+    {
+        const int k = static_cast<int> ( f.second->keypoint_.pt.y/cell_size_ ) *grid_n_cols_ +
+                      static_cast<int> ( f.second->keypoint_.pt.x /cell_size_ );
+        grid_occupancy_[k] = true;
     }
-    );
-    
+
     // for fast corners
     Corners corners ( grid_n_cols_*grid_n_rows_, Corner ( 0, 0, detection_threshold_, 0, 0.f ) );
     for ( int L=0; L<pyramid_levels_; ++L )
@@ -126,25 +126,30 @@ void FeatureDetection::detectFAST ( Frame::Ptr frame, bool ignore_previous )
             }
         }
     }
-    
+
     // 对于足够高分的corner，设为feature
     int number_features = frame->features_.size();
     cout<<number_features<<endl;
+    int id=0;
     std::for_each ( corners.begin(), corners.end(), [&] ( Corner& c )
     {
         if ( number_features > max_features_ )
             return;
+        // check the boarder 
+        if ( c.x<5 || c.y<5 || c.x>frame->color_.cols-5 || c.y>frame->color_.rows-5 )
+            return; 
         if ( c.score > detection_threshold_ )
         {
             // 用cv::Keypoint来表示feature,之后会方便一些
-            zed_slam::Feature *f = new zed_slam::Feature();
+            shared_ptr<zed_slam::Feature> f ( new zed_slam::Feature() );
+            f->id_ = id;
             f->frame_ = frame.get();
             f->keypoint_ = c.toCvKeyPoint();
-            frame->features_.push_back ( f );
+            frame->features_.insert ( {id++,f} );
             number_features++;
         }
-    });
-    
+    } );
+
     frame->assignFeatureDepthAndConfidence();
 
     // reset the grid occupancy

@@ -12,6 +12,7 @@ public:
     Feature();
     Feature ( Frame* frame, cv::KeyPoint& keypoint, float depth=-1, float confidence=-1 );
     Feature( const Feature& feature );
+    int                 id_;           // id
     Frame*              frame_;        // the associated frame
     cv::KeyPoint        keypoint_;     // the position in 2d image, pyramid layer and score are also saved in this kp
     float               depth_;        //

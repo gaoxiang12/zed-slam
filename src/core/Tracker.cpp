@@ -80,13 +80,13 @@ int Tracker::trackKLT ( Frame::Ptr first, Frame::Ptr second )
             continue;
         }
         // klt is good, add this feature into second frame
-        cv::KeyPoint kp = ( *iter_first )->keypoint_;
+        cv::KeyPoint kp = ( *iter_first ).second->keypoint_;
         kp.pt = pixel_keypoint_second[i];
-        Feature* f = new Feature ( second.get(), kp, ( *iter_first )->depth_, ( *iter_first )->confidence_ );
-        f->position_ = ( *iter_first )->position_;
-        f->quality_ = ( *iter_first )->quality_+1;
+        shared_ptr<Feature> f (new Feature ( second.get(), kp, ( *iter_first ).second->depth_, ( *iter_first ).second->confidence_ ));
+        f->position_ = ( *iter_first ).second->position_;
+        f->quality_ = ( *iter_first ).second->quality_+1;
         f->quality_ = f->quality_ > 100? 100: f->quality_;
-        second->features_.push_back ( f );
+        second->features_.insert ( {f->id_,f} );
         iter_first++;
         good++;
     }
@@ -117,7 +117,7 @@ int Tracker::poseEstimationTwoFrames ( Frame::Ptr first, Frame::Ptr second )
     vector<g2o::EdgeSE3ProjectXYZOnlyPose*> edges;
     for ( auto iter=second->features_.begin(); iter!=second->features_.end(); iter++ )
     {
-        if ( ( *iter )->quality_ == 0 )
+        if ( ( *iter ).second->quality_ == 0 )
         {
             // from this to end are all new features which do not occur in frame 1
             break;
@@ -125,18 +125,18 @@ int Tracker::poseEstimationTwoFrames ( Frame::Ptr first, Frame::Ptr second )
         // 3d point
         g2o::EdgeSE3ProjectXYZOnlyPose* edge = new g2o::EdgeSE3ProjectXYZOnlyPose();
         edge->setVertex ( 0, pose );
-        edge->Xw = ( *iter )->position_;
+        edge->Xw = ( *iter ).second->position_;
         edge->fx = second->camera_->fx();
         edge->fy = second->camera_->fy();
         edge->cx = second->camera_->cx();
         edge->cy = second->camera_->cy();
         edge->setMeasurement ( Eigen::Vector2d (
-                                   ( *iter )->keypoint_.pt.x, ( *iter )->keypoint_.pt.y ) );
+                                   ( *iter ).second->keypoint_.pt.x, ( *iter ).second->keypoint_.pt.y ) );
         // cout<<edge->Xw<<endl;
         // TODO how to set the information matrix? how to use confidence?
         //edge->setInformation ( ( *iter )->confidence_ * Eigen::Matrix2d::Identity() );
         //cout<<(*iter)->confidence_<<endl;
-        edge->setInformation ( ( *iter )->confidence_ * Eigen::Matrix2d::Identity() );
+        edge->setInformation ( ( *iter ).second->confidence_ * Eigen::Matrix2d::Identity() );
         edge->setRobustKernel ( new g2o::RobustKernelHuber() );
         optimizer.addEdge ( edge );
         edges.push_back ( edge );
@@ -186,7 +186,7 @@ int Tracker::poseEstimationTwoFrames ( Frame::Ptr first, Frame::Ptr second )
     //cout<<second->features_.size()<<endl;
     for ( auto iter = second->features_.begin(); iter!=second->features_.end(); )
     {
-        Feature* feature = *iter;
+        shared_ptr<Feature> feature = (*iter).second;
         //cv::circle( features_img, feature->keypoint_.pt, 4*(feature->keypoint_.octave+1), cv::Scalar( 0, 0, 255), 1);
         if ( feature->quality_ > 0 )
         {
@@ -370,8 +370,8 @@ int Tracker::poseEstimationTwoFramesSemiDirect ( Frame::Ptr first, Frame::Ptr se
             Eigen::Matrix<double, 1, 2> jacobian_pixel_uv;
             jacobian_pixel_uv.setZero();
 
-            Feature* feature_second = *iter_second;
-            Feature* feature_first = *iter_first;
+            shared_ptr<Feature> feature_second = (*iter_second).second;
+            shared_ptr<Feature> feature_first = (*iter_first).second ;
             //if ( feature_second->quality_ > 0 )
             // this is a feature tracked from first frame
             // compute the bilinear interpolated pixel value
@@ -466,14 +466,13 @@ int Tracker::poseEstimationTwoFramesSemiDirect ( Frame::Ptr first, Frame::Ptr se
     //cout<<"first="<<first->T_f_w_.matrix() <<endl;
     //cout<<"second="<<second->T_f_w_.matrix() <<endl;
     // update the features in second frame
-    for ( Feature* feature:second->features_ )
+    for ( auto feature:second->features_ )
     {
-        Eigen::Vector2d pixel = second->world2pixel ( feature->position_ );
+        Eigen::Vector2d pixel = second->world2pixel ( feature.second->position_ );
         //cout<<"pixel="<<pixel.matrix()<<endl;
         //cout<<"keypoint: "<<feature->keypoint_.pt<<endl;
-        feature->keypoint_.pt.x = pixel[0];
-        feature->keypoint_.pt.y = pixel[1];
-        //feature->position_;
+        feature.second->keypoint_.pt.x = pixel[0];
+        feature.second->keypoint_.pt.y = pixel[1];
     }
 
     return 1;
@@ -486,12 +485,12 @@ int Tracker::poseEstimationTwoFramesSemiDirectUsingG2O ( Frame::Ptr first, Frame
     cout<<"calling pose estimation semi-direct using g2o"<<endl;
 
     // copy the features into second
-    std::for_each ( first->features_.begin(), first->features_.end(), [&] ( Feature* f )
+    for ( auto f:first->features_ )
     {
-        Feature* f2 = new Feature ( *f );
+        shared_ptr<Feature> f2 (new Feature ( *f.second ));
         f2->frame_ = second.get();
-        second->features_.push_back ( f2 );
-    } );
+        second->features_.insert ( {f.second->id_, f2} );
+    } 
 
     g2o::SparseOptimizer optimizer;
     DirectBlock::LinearSolverType* linearSolver = new g2o::LinearSolverDense< DirectBlock::PoseMatrixType > ();
@@ -510,14 +509,15 @@ int Tracker::poseEstimationTwoFramesSemiDirectUsingG2O ( Frame::Ptr first, Frame
     int id = 1;
     vector< g2o::EdgeSE3ProjectDirect*> edges;
     //Feature* feature = *second->features_.begin();
-    for ( Feature* feature: second->features_ )
+    for ( auto f: second->features_ )
     {
+        auto feature=f.second;
         //if ( id>5 )
         //    break;
         //cout<<"feature position="<<feature->position_<<endl;
         //cout<<"feature pixel in frame 1="<<feature->keypoint_.pt<<endl;
 
-        float grayscale_value = first->getBiLinearPixelValue ( feature->getPixelPosition ( false ) ) ;
+        //float grayscale_value = first->getBiLinearPixelValue ( feature->getPixelPosition ( false ) ) ;
         //cout<<"measurement="<<grayscale_value<<endl;
         // check whether inside the image
         //if ( feature->isInsideFrameImage ( 10 ) ==false )

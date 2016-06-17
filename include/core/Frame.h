@@ -4,6 +4,7 @@
 #include <memory>
 #include <string>
 #include <list>
+#include <unordered_map>
 
 #include <Eigen/Geometry>
 #include <opencv2/core/core.hpp>
@@ -29,11 +30,12 @@ class Frame
 {
 public:
     typedef std::shared_ptr<Frame> Ptr;
+    typedef std::unordered_map<int, shared_ptr<Feature>> Features;
     
     int                            id_;         // id of this frame
     double                         time_stamp_; // when it is recorded
     Eigen::Isometry3d              T_f_w_;      //transform from frame to world
-    list<Feature*>                 features_;   // features
+    Features                       features_;   // features
     vk::PinholeCamera*             camera_;     // the camera model
     cv::Mat                        color_, depth_, confidence_; // three images extracted from zed 
     vector< cv::Mat >              image_pyramid_; // the pyramid

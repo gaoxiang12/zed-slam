@@ -37,10 +37,6 @@ int main( int argc, char** argv )
         cout<<"Detecting fast cost time "<<timer.elapsed()<<endl;
         cout<<"total features: "<<frame->features_.size()<<endl;
         
-        zed_slam::Feature* feature = *frame->features_.begin();
-        cout<<"Feature 0 3d position: "<<feature->position_<<endl;
-        cout<<"Feature 0 2d pixel: "<<feature->keypoint_.pt<<endl;
-        cout<<"Project from 3d to 2d: "<< frame->world2pixel( feature->position_ )<<endl;
         zed_slam::SLAMTools::drawFeatures( frame );
         cv::waitKey(0);
     }

@@ -44,9 +44,9 @@ void SLAMTools::drawFeatures ( Frame::Ptr frame )
 {
     cv::Mat img_show;
     cv::cvtColor ( frame->color_, img_show, CV_GRAY2RGB );
-    std::for_each ( frame->features_.begin(), frame->features_.end(),
-                    [&] ( zed_slam::Feature* feature )
+    for ( auto f:frame->features_)
     {
+        shared_ptr<Feature> feature = f.second;
         if ( feature->quality_ < 50 )
             cv::circle ( img_show, feature->keypoint_.pt, 4* ( feature->keypoint_.octave+1 ),
                          cv::Scalar ( 0,255,0 ), 1 );
@@ -54,7 +54,6 @@ void SLAMTools::drawFeatures ( Frame::Ptr frame )
             cv::circle ( img_show, feature->keypoint_.pt, 4* ( feature->keypoint_.octave+1 ),
                          cv::Scalar ( 200,0,0 ), 2 );
     }
-                  );
     cv::imshow ( "features", img_show );
 }
 
@@ -62,13 +61,12 @@ void SLAMTools::drawFeaturesReprojection ( Frame::Ptr frame, string window_name 
 {
     cv::Mat img_show;
     cv::cvtColor ( frame->color_, img_show, CV_GRAY2RGB );
-    std::for_each ( frame->features_.begin(), frame->features_.end(),
-                    [&] ( zed_slam::Feature* feature )
+    for ( auto f:frame->features_ )
     {
-        Eigen::Vector2d pos = frame->world2pixel ( feature->position_ );
-        cv::circle ( img_show, cv::Point2f ( pos[0],pos[1] ), 4* ( feature->keypoint_.octave+1 ),
+        Eigen::Vector2d pos = frame->world2pixel ( f.second->position_ );
+        cv::circle ( img_show, cv::Point2f ( pos[0],pos[1] ), 4* ( f.second->keypoint_.octave+1 ),
                      cv::Scalar ( 0,0,255 ), 2 );
-    } );
+    }
     cv::imshow ( window_name.c_str(), img_show );
 }
 
@@ -335,9 +333,9 @@ void FrameDrawer::drawLocalMapPoints()
     glBegin(GL_POINTS);
     glColor3d(0.1,0.1,0.1);
     
-    for ( shared_ptr<MapPoint> p: points )
+    for ( auto p: points )
     {
-        glVertex3d( p->pos_(0), p->pos_(1),p->pos_(2) );
+        glVertex3d( p.second->pos_(0), p.second->pos_(1),p.second->pos_(2) );
     }
     
     glEnd();
